@@ -1,5 +1,20 @@
+# AutoSpotless-Pipeline
+An automated backend engine based on [SpotLessSplats](https://github.com/lilygoli/SpotLessSplats).
+
+## Features
+- **One-click Pipeline:** Video (.mp4) -> COLMAP -> SD Features -> 3DGS Training.
+- **Optimized for VRAM:** Automatic cleanup of Stable Diffusion models.
+- **Safety:** Supports SafeTensors to avoid pickle vulnerabilities.
+
+## Quick Start
+```bash
+python run_pipeline.py --video my_video.mp4 --project_name demo
+```
+
 # Adding support for SpotLessSplats: Ignoring Distractors in 3D Gaussian Splatting
 ### [Project Page](https://spotlesssplats.github.io/) | [Paper](https://arxiv.org/abs/2406.20055)
+
+
 
 ## Reproduced Results
 The results in the SpotLessSplats paper are reproduced on `gsplat` codebase. The results on `gsplat` are reported without enabling the appearance modeling method of `gsplat`.
