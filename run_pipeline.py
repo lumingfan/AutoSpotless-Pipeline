@@ -9,44 +9,121 @@ from pipeline.step1_process_video import process_video
 
 def main():
     parser = argparse.ArgumentParser(description="SpotlessSplats Auto Pipeline")
-    parser.add_argument("--video", required=True, help="Path to input .mp4")
+    parser.add_argument("--video", required=True, help="Path to input .mp4") # 虽然跳过时不需要读视频，但为了兼容性保留
     parser.add_argument("--project-name", required=True, help="Name of the output folder")
+    parser.add_argument("--data-factor", type=str, default="8", help="Downscale factor")
+    parser.add_argument("--max-steps", type=str, default="30000", help="Max training iterations")
+    
+    # [新增] 跳过预处理开关
+    parser.add_argument("--skip-preprocessing", action="store_true", help="Skip COLMAP and SD extraction if data exists")
+    
     args = parser.parse_args()
 
     # 1. 设置路径
-    root_dir = Path("my_data_cache")  # 所有中间数据放这里
+    root_dir = Path("my_data_cache")
     project_dir = root_dir / args.project_name
     
-    # 2. 运行 Step 1: Video -> COLMAP (CPU/GPU)
-    # 返回的是 undistorted 目录，这才是真正的 dataset 目录
-    dataset_dir = process_video(args.video, project_dir)
-    
-    # 3. 运行 Step 2: Feature Extraction (GPU)
-    # 我们用 subprocess 调用脚本，确保跑完后 Python 进程结束，彻底释放显存
-    print("\n=== Running Feature Extraction ===\n")
-    subprocess.check_call([sys.executable, "pipeline/step2_extract_features.py", str(dataset_dir)])
+    # 预测数据集路径 (根据 step1 的逻辑)
+    dataset_dir = project_dir / "undistorted"
 
-    # 4. 运行 Step 3: Training (GPU)
+    # 定位 spotless_trainer.py (逻辑不变)
+    trainer_script = Path("examples") / "spotless_trainer.py"
+    if not trainer_script.exists():
+        trainer_script = Path("spotless_trainer.py")
+        if not trainer_script.exists():
+            print(f"❌ Error: Could not find spotless_trainer.py")
+            sys.exit(1)
+
+    print(f"🚀 Pipeline Start: {args.project_name}")
+
+    # =========================================================
+    # 逻辑分支：跳过 vs 不跳过
+    # =========================================================
+    if args.skip_preprocessing:
+        print("\n⏭️  Skipping Preprocessing (COLMAP & Feature Extraction)...")
+        
+        # 严谨的检查：数据真的存在吗？
+        if not dataset_dir.exists() or not (dataset_dir / "images").exists() or not (dataset_dir / "SD").exists():
+            print(f"❌ Error: Cannot skip! Data not found at: {dataset_dir}")
+            print(f"   Please run without --skip_preprocessing first.")
+            sys.exit(1)
+        else:
+            print(f"✅ Found existing data at: {dataset_dir}")
+            
+    else:
+        # --- 正常流程 ---
+        
+        # 2. 运行 Step 1: Video -> COLMAP
+        dataset_dir = process_video(args.video, project_dir)
+        
+        # 3. 运行 Step 2: Feature Extraction
+        print("\n=== Running Feature Extraction (Stable Diffusion) ===\n")
+        step2_script = Path("pipeline_scripts") / "step2_extract_features.py"
+        subprocess.check_call([sys.executable, str(step2_script), str(dataset_dir)])
+
+
+    # =========================================================
+    # Step 3: Training (总是运行)
+    # =========================================================
     print("\n=== Running Spotless Training ===\n")
     
     output_model_dir = Path("results") / args.project_name
     
+    # 如果跳过预处理，可能想在一个新的文件夹输出结果，避免覆盖？
+    # 这里为了简单，我们还是用同一个结果目录，spotless_trainer 会处理覆盖问题
+    
     cmd = [
-        sys.executable, "examples/spotless_trainer.py",
-        "--data-dir", str(dataset_dir),
-        "--result-dir", str(output_model_dir),
-        "--loss-type", "robust",
+        sys.executable, str(trainer_script),
+        "--data_dir", str(dataset_dir),
+        "--result_dir", str(output_model_dir),
+        "--loss_type", "robust",
         "--semantics",
         "--no-cluster",
-        "--train-keyword", "clutter",
-        "--test-keyword", "extra",
+        "--train_keyword", "clutter",
+        "--test_keyword", "extra",
         "--ubp",
-        "--data-factor", "8" # 只有 1 才能看清细节，但需要显存
+        "--data-factor", str(args.data_factor),
+        "--max-steps", str(args.max_steps)
     ]
     
+    print(f"Command: {' '.join(cmd)}")
     subprocess.check_call(cmd)
     
     print(f"\n🎉 Pipeline Complete! Results at: {output_model_dir}")
+
+    
+    # === 新增：Step 4: Export to PLY ===
+    print("\n=== Running Step 4: Converting Checkpoint to PLY ===\n")
+    
+    # 寻找最新的 ckpt
+    ckpt_dir = output_model_dir / "ckpts"
+    # 寻找 step 最大的 .pt 文件 (例如 ckpt_29999.pt)
+    try:
+        ckpts = list(ckpt_dir.glob("ckpt_*.pt"))
+        if not ckpts:
+            print("❌ No checkpoints found to convert!")
+        else:
+            # 排序逻辑：提取文件名里的数字进行排序
+            latest_ckpt = sorted(ckpts, key=lambda x: int(x.stem.split('_')[-1]))[-1]
+            print(f"Found latest checkpoint: {latest_ckpt}")
+            
+            # 定义输出 PLY 路径 (放到 results/project/point_cloud.ply)
+            ply_output_path = output_model_dir / "point_cloud.ply"
+            
+            converter_script = Path("pipeline") / "step4_export_ply.py"
+            
+            convert_cmd = [
+                sys.executable, str(converter_script),
+                str(latest_ckpt),
+                str(ply_output_path)
+            ]
+            
+            subprocess.check_call(convert_cmd)
+            print(f"🎉 PLY generated at: {ply_output_path}")
+
+    except Exception as e:
+        print(f"⚠️ Warning: PLY conversion failed: {e}")
+        print("   You still have the video, but web viewer might not work.")
 
 if __name__ == "__main__":
     main()

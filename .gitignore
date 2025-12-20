@@ -6,6 +6,7 @@ compile_commands.json
 **/examples/data/
 **/data/
 **/*.mp4
+**/*.gradio
 
 # 忽略输出结果
 **/results/
