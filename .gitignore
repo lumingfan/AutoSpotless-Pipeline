@@ -1,6 +1,19 @@
 .clangd
 compile_commands.json
 
+# 忽略数据缓存
+**/my_data_cache/
+**/examples/data/
+**/data/
+**/*.mp4
+
+# 忽略输出结果
+**/results/
+**/output/
+**/wandb/
+
+**/*.tar.gz
+
 # Visual Studio Code configs.
 .vscode/
 
