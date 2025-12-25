@@ -118,18 +118,10 @@ def run_spotless_pipeline(video_file, project_name, data_factor, max_steps, skip
         log_queue.append(f"\n✅ Found video: {result_video}")
     else:
         log_queue.append(f"\n⚠️ Warning: No video found in {output_dir}/videos")
-
-    ply_candidates = list((output_dir / "point_cloud" / "iteration_30000").glob("point_cloud.ply"))
-    if not ply_candidates:
-        ply_candidates = list((output_dir / "point_cloud").rglob("*.ply"))
         
-    result_ply = None
-    if ply_candidates:
-        result_ply = str(sorted(ply_candidates, key=os.path.getmtime)[-1])
-        log_queue.append(f"\n✅ Found PLY: {result_ply}")
     
     log_queue.append("\n\n🎉 ALL DONE! You can download the results below.")
-    yield "".join(log_queue), result_video, result_ply
+    yield "".join(log_queue), result_video
 
 # ---------------------------------------------------------
 # 前端布局 (Gradio Blocks)
@@ -167,7 +159,7 @@ with gr.Blocks(title="AutoSpotless Pipeline", theme=gr.themes.Soft()) as demo:
                     label="Downscale Factor (1=Best Quality, 8=Fastest)"
                 )
                 max_steps_slider = gr.Slider(
-                    minimum=1000, maximum=30000, step=1000, value=30000,
+                    minimum=1000, maximum=30000, step=1000, value=10000,
                     label="Max Steps (Training Iterations)"
                 )
             
@@ -187,7 +179,7 @@ with gr.Blocks(title="AutoSpotless Pipeline", theme=gr.themes.Soft()) as demo:
             
             gr.Markdown("### 3. Results")
             result_video_output = gr.Video(label="Rendered Trajectory")
-            result_ply_output = gr.File(label="Download 3D Point Cloud (.ply)")
+            # result_ply_output = gr.File(label="Download 3D Point Cloud (.ply)")
 
     # ---------------------------------------------------------
     # 事件绑定
@@ -195,7 +187,7 @@ with gr.Blocks(title="AutoSpotless Pipeline", theme=gr.themes.Soft()) as demo:
     run_btn.click(
         fn=run_spotless_pipeline,
         inputs=[input_video, project_name_input, data_factor_slider, max_steps_slider, skip_checkbox],
-        outputs=[log_output, result_video_output, result_ply_output]
+        outputs=[log_output, result_video_output]
     )
 
 # 启动服务

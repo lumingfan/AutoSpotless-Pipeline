@@ -91,39 +91,5 @@ def main():
     
     print(f"\n🎉 Pipeline Complete! Results at: {output_model_dir}")
 
-    
-    # === 新增：Step 4: Export to PLY ===
-    print("\n=== Running Step 4: Converting Checkpoint to PLY ===\n")
-    
-    # 寻找最新的 ckpt
-    ckpt_dir = output_model_dir / "ckpts"
-    # 寻找 step 最大的 .pt 文件 (例如 ckpt_29999.pt)
-    try:
-        ckpts = list(ckpt_dir.glob("ckpt_*.pt"))
-        if not ckpts:
-            print("❌ No checkpoints found to convert!")
-        else:
-            # 排序逻辑：提取文件名里的数字进行排序
-            latest_ckpt = sorted(ckpts, key=lambda x: int(x.stem.split('_')[-1]))[-1]
-            print(f"Found latest checkpoint: {latest_ckpt}")
-            
-            # 定义输出 PLY 路径 (放到 results/project/point_cloud.ply)
-            ply_output_path = output_model_dir / "point_cloud.ply"
-            
-            converter_script = Path("pipeline") / "step4_export_ply.py"
-            
-            convert_cmd = [
-                sys.executable, str(converter_script),
-                str(latest_ckpt),
-                str(ply_output_path)
-            ]
-            
-            subprocess.check_call(convert_cmd)
-            print(f"🎉 PLY generated at: {ply_output_path}")
-
-    except Exception as e:
-        print(f"⚠️ Warning: PLY conversion failed: {e}")
-        print("   You still have the video, but web viewer might not work.")
-
 if __name__ == "__main__":
     main()
