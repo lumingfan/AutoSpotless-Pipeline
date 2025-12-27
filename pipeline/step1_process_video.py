@@ -13,7 +13,7 @@ def run_command(cmd):
         print(f"❌ Command failed: {e}")
         sys.exit(1)
 
-def process_video(video_path, output_dir, fps=5):
+def process_video(video_path, output_dir, fps=10):
     video_path = Path(video_path).resolve()
     output_dir = Path(output_dir).resolve()
     
@@ -71,8 +71,12 @@ def process_video(video_path, output_dir, fps=5):
     # 注意：这里 input 指向 colmap_input_images_dir
     run_command(f"colmap feature_extractor --database_path {db_path} --image_path {colmap_input_images_dir} --ImageReader.camera_model SIMPLE_RADIAL")
 
-    print("Step 4: COLMAP Exhaustive Matcher...")
-    run_command(f"colmap exhaustive_matcher --database_path {db_path}")
+    # print("Step 4: COLMAP Exhaustive Matcher...")
+    # run_command(f"colmap exhaustive_matcher --database_path {db_path}")
+    vocab_path = "/mnt/DISK/xjk/code/spotless/pipeline/vocab_tree_faiss_flickr100K_words256K.bin"
+    print("Step 4: -> Using Sequential Matcher (Crucial for video data)")
+    cmd = f"colmap sequential_matcher --database_path {db_path} --SequentialMatching.overlap 20 --SequentialMatching.loop_detection 1 --SequentialMatching.vocab_tree_path {vocab_path}"
+    run_command(cmd)
 
     print("Step 5: COLMAP Mapper (SfM)...")
     run_command(f"colmap mapper --database_path {db_path} --image_path {colmap_input_images_dir} --output_path {sparse_dir}")

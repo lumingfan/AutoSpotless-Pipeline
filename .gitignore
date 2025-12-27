@@ -3,6 +3,7 @@ compile_commands.json
 
 # 忽略数据缓存
 **/my_data_cache/
+**/data_cache/
 **/examples/data/
 **/data/
 **/*.mp4
@@ -14,6 +15,7 @@ compile_commands.json
 **/wandb/
 
 **/*.tar.gz
+**/vocab_tree_faiss_flickr100K_words256K.bin
 
 # Visual Studio Code configs.
 .vscode/

@@ -58,7 +58,7 @@ def main():
         
         # 3. 运行 Step 2: Feature Extraction
         print("\n=== Running Feature Extraction (Stable Diffusion) ===\n")
-        step2_script = Path("pipeline_scripts") / "step2_extract_features.py"
+        step2_script = Path("pipeline") / "step2_extract_features.py"
         subprocess.check_call([sys.executable, str(step2_script), str(dataset_dir)])
 
 

@@ -24,7 +24,7 @@ def run_spotless_pipeline(video_file, project_name, data_factor, max_steps, skip
     """
     # 1. 输入校验
     if not video_file and not skip_preprocessing:
-        yield "❌ Error: Please upload a video first.", None, None
+        yield "❌ Error: Please upload a video first.", None
         return
     
     if not project_name:
@@ -59,7 +59,7 @@ def run_spotless_pipeline(video_file, project_name, data_factor, max_steps, skip
     # 这能保证浏览器永远只渲染少量文本，绝对不会卡
     log_queue = deque([initial_log], maxlen=1000)
     
-    yield "".join(log_queue), None, None
+    yield "".join(log_queue), None
     
     # 4. 启动子进程
     with open(log_file_path, "w", encoding="utf-8") as f_log:
@@ -89,21 +89,21 @@ def run_spotless_pipeline(video_file, project_name, data_factor, max_steps, skip
                 # 这样可以显著降低浏览器负载
                 line_counter += 1
                 if line_counter % 10 == 0 or "Step" in line or "Error" in line:
-                    yield "".join(log_queue), None, None
+                    yield "".join(log_queue), None
                 
             # 等待进程结束
             proc.wait()
             
             if proc.returncode != 0:
                 log_queue.append(f"\n❌ Pipeline failed with return code {proc.returncode}")
-                yield "".join(log_queue), None, None
+                yield "".join(log_queue), None
                 return
 
         except Exception as e:
             err_msg = f"\n❌ System Error: {str(e)}"
             log_queue.append(err_msg)
             if 'f_log' in locals(): f_log.write(err_msg)
-            yield "".join(log_queue), None, None
+            yield "".join(log_queue), None
             return
 
     # 6. 寻找结果文件 (保持不变)
